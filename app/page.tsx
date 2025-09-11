@@ -7,26 +7,35 @@ import { distanceMeters } from '../lib/haversine';
 import { seedCheckpoints } from '../lib/checkpoints';
 import JoinForm from '../components/JoinForm';
 import StatusInfo from '../components/StatusInfo';
+import Cookies from 'js-cookie';
+import TopNav from '../components/TopNav';
 
 type Pos = { lat: number; lng: number; acc?: number };
 const Map = dynamic(() => import('../components/Map'), { ssr: false });
 
 export default function Home() {
+  const [isClient, setIsClient] = useState(false);
   const [playerId, setPlayerId] = useState<string>('');
   const [team, setTeam] = useState<string>('');
   const [name, setName] = useState<string>('');
+  const [teamCode, setTeamCode] = useState<string>('');
+  const [mode, setMode] = useState<'create' | 'join'>('create');
   const [pos, setPos] = useState<Pos | null>(null);
   const [consent, setConsent] = useState(false);
   const [activeCp, setActiveCp] = useState(seedCheckpoints[0]);
   const [status, setStatus] = useState<string>('');
 
   useEffect(() => {
+    setIsClient(true);
     let id = localStorage.getItem('playerId');
     if (!id) {
       id = uuid();
       localStorage.setItem('playerId', id);
     }
     setPlayerId(id);
+    const code = Cookies.get('teamCode') || '';
+    setTeamCode(code);
+    setMode(code ? 'join' : 'create');
   }, []);
 
   useEffect(() => {
@@ -52,29 +61,64 @@ export default function Home() {
     }
   }, [pos, activeCp]);
 
-  async function join() {
-    if (!team || !name) return alert('Team & Name eingeben');
-    await supabase.from('players').upsert({ id: playerId, team, name });
-    setConsent(true);
+  function handleModeChange(newMode: 'create' | 'join') {
+    setMode(newMode);
+    if (newMode === 'create') {
+      setTeamCode('');
+      setTeam('');
+    }
+    if (newMode === 'join') {
+      setTeam(''); // Teamname wird nicht benötigt
+    }
   }
 
+  async function handleJoin(mode: 'create' | 'join', team: string, name: string, code: string) {
+    if (!name || (mode === 'create' && !team) || (mode === 'join' && !code)) {
+      alert('Bitte alle Felder ausfüllen!');
+      return;
+    }
+    await supabase.from('players').upsert({ id: playerId, team, name, team_code: code });
+    setConsent(true);
+    setTeamCode(code);
+    Cookies.set('teamCode', code);
+  }
+
+  function handleLogout() {
+    setConsent(false);
+    setTeam('');
+    setName('');
+    setTeamCode('');
+    Cookies.remove('teamCode');
+    localStorage.removeItem('playerId');
+  }
+
+  if (!isClient) return null;
+
   return (
-    <main className="p-4 space-y-4 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold">Perruel Schnitzeljagd</h1>
-      <p className="text-sm opacity-80">
-        Mit Teilnahme stimmst du der Standortfreigabe zu (nur für das Event, wird danach gelöscht).
-      </p>
-
-      <JoinForm
-        team={team}
-        name={name}
-        onTeamChange={setTeam}
-        onNameChange={setName}
-        onJoin={join}
-      />
-
-      <StatusInfo status={status} />
-      <Map pos={pos} checkpoints={[activeCp]} />
+    <main className="min-h-screen bg-gray-50 text-gray-900">
+      {consent && (
+        <TopNav team={team} name={name} teamCode={teamCode} onLogout={handleLogout} />
+      )}
+      {!consent ? (
+        <JoinForm
+          team={team}
+          name={name}
+          teamCode={teamCode}
+          mode={mode}
+          onTeamChange={setTeam}
+          onNameChange={setName}
+          onTeamCodeChange={setTeamCode}
+          onModeChange={handleModeChange}
+          onJoin={handleJoin}
+        />
+      ) : (
+        <>
+          <Map pos={pos} checkpoints={[activeCp]} />
+          <div className="fixed bottom-0 left-0 w-full z-20 p-4 pointer-events-none">
+            <StatusInfo status={status} />
+          </div>
+        </>
+      )}
     </main>
   );
 }

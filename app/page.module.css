@@ -1,8 +1,67 @@
+/* TopNav Styles */
+.topnav {
+  background: linear-gradient(90deg, #2563eb 0%, #1e293b 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(30,41,59,0.08);
+  border-bottom: 1px solid #e5e7eb;
+}
+.topnav .logo {
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.topnav .nav-btn {
+  background: #fff;
+  color: #2563eb;
+  font-weight: 500;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1.1rem;
+  margin-left: 0.5rem;
+  box-shadow: 0 1px 2px rgba(30,41,59,0.04);
+  transition: background 0.2s, color 0.2s;
+  cursor: pointer;
+}
+.topnav .nav-btn:hover {
+  background: #2563eb;
+  color: #fff;
+}
+.infoModal {
+  top: 3.5rem;
+  right: 1rem;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(30,41,59,0.12);
+  border: 1px solid #e5e7eb;
+  min-width: 220px;
+  max-width: 90vw;
+  z-index: 50;
+}
+.infoModal .font-mono {
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+}
+/* JoinForm Styles */
 .joinForm {
-  margin-bottom: 1rem;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(120deg, #f3f4f6 0%, #e0e7ff 100%);
 }
 .input {
   font-size: 1rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  padding: 0.7rem 1rem;
+  margin-bottom: 0.7rem;
+  width: 100%;
+  max-width: 320px;
+  background: #fff;
   transition: border-color 0.2s;
 }
 .input:focus {
@@ -12,14 +71,70 @@
 .button {
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  background: linear-gradient(90deg, #2563eb 0%, #1e293b 100%);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.7rem 1rem;
+  margin-bottom: 0.7rem;
+  width: 100%;
+  max-width: 320px;
+  box-shadow: 0 1px 2px rgba(30,41,59,0.04);
+  transition: background 0.2s, color 0.2s;
 }
 .button:hover {
-  background: #2563eb;
+  background: #1e293b;
+  color: #fff;
 }
+.buttonSecondary {
+  background: #fff;
+  color: #2563eb;
+  border: 1px solid #2563eb;
+}
+.buttonSecondary:hover {
+  background: #2563eb;
+  color: #fff;
+}
+.buttonDanger {
+  background: #fff;
+  color: #dc2626;
+  border: 1px solid #dc2626;
+}
+.buttonDanger:hover {
+  background: #dc2626;
+  color: #fff;
+}
+/* StatusInfo Styles */
 .status {
-  font-size: 1rem;
+  font-size: 1.1rem;
   margin-bottom: 1rem;
   color: #2563eb;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 0.7rem 1rem;
+  box-shadow: 0 1px 4px rgba(30,41,59,0.06);
+  text-align: center;
 }
-
+/* Map Styles */
+.leaflet-container {
+  border-radius: 0;
+  box-shadow: 0 2px 16px rgba(30,41,59,0.10);
+}
+@media (max-width: 600px) {
+  .topnav {
+    font-size: 0.95rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  .infoModal {
+    right: 0.5rem;
+    min-width: 180px;
+    padding: 1rem 0.7rem;
+  }
+  .joinForm {
+    padding: 1rem 0.5rem;
+  }
+  .input, .button {
+    max-width: 98vw;
+  }
+}
