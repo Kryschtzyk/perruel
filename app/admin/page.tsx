@@ -1,57 +1,85 @@
-'use client';
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+"use client";
 
-export default function Admin() {
-  const [ok, setOk] = useState(false);
-  const [players, setPlayers] = useState<any[]>([]);
-  const [positions, setPositions] = useState<any[]>([]);
+import { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
+
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  lat: number;
+  lng: number;
+  solution: string;
+  radius: number;
+}
+
+export default function AdminPage() {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState<Partial<Task>>({});
+  const [editId, setEditId] = useState<string | null>(null);
+
+  async function fetchTasks() {
+    setLoading(true);
+    const { data, error } = await supabase.from('tasks').select('*').order('title');
+    if (!error && data) setTasks(data);
+    setLoading(false);
+  }
 
   useEffect(() => {
-    const key = prompt('Admin-Passwort?');
-    setOk(key === process.env.NEXT_PUBLIC_ADMIN_PASS);
+    fetchTasks();
   }, []);
 
-  useEffect(() => {
-    if (!ok) return;
-    supabase
-      .from('players')
-      .select('*')
-      .then(({ data }) => setPlayers(data || []));
+  async function handleSave() {
+    if (!form.title || !form.lat || !form.lng || !form.radius) return;
+    if (editId) {
+      await supabase.from('tasks').update(form).eq('id', editId);
+    } else {
+      await supabase.from('tasks').insert([{ ...form }]);
+    }
+    setForm({});
+    setEditId(null);
+    fetchTasks();
+  }
 
-    const ch = supabase
-      .channel('pos')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'positions' }, (payload) => {
-        setPositions((prev) => [payload.new, ...prev].slice(0, 200));
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
-  }, [ok]);
+  async function handleDelete(id: string) {
+    await supabase.from('tasks').delete().eq('id', id);
+    fetchTasks();
+  }
 
-  if (!ok) return <main className="p-4">Kein Zugriff.</main>;
+  function handleEdit(task: Task) {
+    setForm(task);
+    setEditId(task.id);
+  }
 
   return (
-    <main className="p-4 space-y-4">
-      <h1 className="text-2xl font-bold">Admin</h1>
-      <section>
-        <h2 className="font-semibold">Teilnehmer</h2>
-        <ul className="list-disc pl-5">
-          {players.map((p) => (
-            <li key={p.id}>
-              {p.team} – {p.name}
+    <div style={{ maxWidth: 600, margin: '2rem auto', padding: '2rem', background: '#fff', borderRadius: 12, boxShadow: '0 2px 16px rgba(30,41,59,0.08)' }}>
+      <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Schnitzeljagd Aufgaben verwalten</h2>
+      {loading ? <div>Lade Aufgaben...</div> : (
+        <ul style={{ marginBottom: '2rem' }}>
+          {tasks.map(task => (
+            <li key={task.id} style={{ marginBottom: 12, padding: 8, borderBottom: '1px solid #eee' }}>
+              <b>{task.title}</b> <span style={{ color: '#888' }}>({task.lat}, {task.lng})</span><br/>
+              <span>{task.description}</span><br/>
+              <span>Lösung: <b>{task.solution}</b></span><br/>
+              <span>Radius: {task.radius}m</span><br/>
+              <button onClick={() => handleEdit(task)} style={{ marginRight: 8 }}>Bearbeiten</button>
+              <button onClick={() => handleDelete(task.id)} style={{ color: 'red' }}>Löschen</button>
             </li>
           ))}
         </ul>
-      </section>
-      <section>
-        <h2 className="font-semibold">Letzte Positionen (Live)</h2>
-        <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto h-64">
-{JSON.stringify(positions.slice(0, 20), null, 2)}
-        </pre>
-      </section>
-    </main>
+      )}
+      <h3>{editId ? 'Aufgabe bearbeiten' : 'Neue Aufgabe hinzufügen'}</h3>
+      <form onSubmit={e => { e.preventDefault(); handleSave(); }} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <input placeholder="Titel" value={form.title || ''} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required />
+        <textarea placeholder="Beschreibung" value={form.description || ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+        <input type="number" placeholder="Latitude" value={form.lat || ''} onChange={e => setForm(f => ({ ...f, lat: Number(e.target.value) }))} required />
+        <input type="number" placeholder="Longitude" value={form.lng || ''} onChange={e => setForm(f => ({ ...f, lng: Number(e.target.value) }))} required />
+        <input placeholder="Lösung" value={form.solution || ''} onChange={e => setForm(f => ({ ...f, solution: e.target.value }))} />
+        <input type="number" placeholder="Radius (Meter)" value={form.radius || ''} onChange={e => setForm(f => ({ ...f, radius: Number(e.target.value) }))} required />
+        <button type="submit" style={{ marginTop: 12 }}>{editId ? 'Speichern' : 'Hinzufügen'}</button>
+        {editId && <button type="button" onClick={() => { setForm({}); setEditId(null); }}>Abbrechen</button>}
+      </form>
+    </div>
   );
 }
-

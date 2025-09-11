@@ -24,6 +24,11 @@ export default function Home() {
   const [consent, setConsent] = useState(false);
   const [activeCp, setActiveCp] = useState(seedCheckpoints[0]);
   const [status, setStatus] = useState<string>('');
+  const [showTasksModal, setShowTasksModal] = useState(false);
+  const [selectedCheckpointId, setSelectedCheckpointId] = useState<string | number | null>(null);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(true);
+  const [errorTasks, setErrorTasks] = useState<string | null>(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -61,6 +66,16 @@ export default function Home() {
     }
   }, [pos, activeCp]);
 
+  useEffect(() => {
+    if (!consent) return;
+    setLoadingTasks(true);
+    supabase.from('tasks').select('*').order('title').then(({ data, error }) => {
+      if (error) setErrorTasks(error.message);
+      else setTasks(data || []);
+      setLoadingTasks(false);
+    });
+  }, [consent]);
+
   function handleModeChange(newMode: 'create' | 'join') {
     setMode(newMode);
     if (newMode === 'create') {
@@ -92,12 +107,25 @@ export default function Home() {
     localStorage.removeItem('playerId');
   }
 
+  function handleSelectCheckpoint(id: string | number) {
+    setSelectedCheckpointId(id);
+    setShowTasksModal(false);
+  }
+
   if (!isClient) return null;
 
   return (
     <main className="min-h-screen bg-gray-50 text-gray-900">
       {consent && (
-        <TopNav team={team} name={name} teamCode={teamCode} onLogout={handleLogout} />
+        <TopNav
+          team={team}
+          name={name}
+          teamCode={teamCode}
+          onLogout={handleLogout}
+          showTasksModal={showTasksModal}
+          setShowTasksModal={setShowTasksModal}
+          onSelectCheckpoint={handleSelectCheckpoint}
+        />
       )}
       {!consent ? (
         <JoinForm
@@ -113,7 +141,12 @@ export default function Home() {
         />
       ) : (
         <>
-          <Map pos={pos} checkpoints={[activeCp]} />
+          <Map
+            pos={pos}
+            checkpoints={tasks}
+            selectedCheckpointId={selectedCheckpointId}
+            setSelectedCheckpointId={setSelectedCheckpointId}
+          />
           <div className="fixed bottom-0 left-0 w-full z-20 p-4 pointer-events-none">
             <StatusInfo status={status} />
           </div>

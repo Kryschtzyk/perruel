@@ -122,3 +122,67 @@
   justify-content: center;
   color: #222;
 }
+.tasksList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+.taskCard {
+  background: #f8fafc;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(30,41,59,0.07);
+  padding: 1.2rem 1rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  position: relative;
+}
+.taskTitle {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #2563eb;
+  margin-bottom: 0.2rem;
+}
+.taskActions {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+}
+.pinBtn {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 2.2rem;
+  height: 2.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(30,41,59,0.10);
+  transition: background 0.2s;
+  &:hover {
+    background: #1e293b;
+  }
+}
+.detailsDropdown {
+  margin-top: 0.5rem;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(30,41,59,0.08);
+  padding: 0.7rem 1rem;
+  font-size: 0.98rem;
+  color: #222;
+}
+.solutionInput {
+  margin-top: 0.7rem;
+  width: 100%;
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  font-size: 1rem;
+}
