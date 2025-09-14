@@ -28,6 +28,7 @@ export default function Home() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [errorTasks, setErrorTasks] = useState<string | null>(null);
+  const [teamPositions, setTeamPositions] = useState<any[]>([]);
 
   useEffect(() => {
     setIsClient(true);
@@ -97,6 +98,65 @@ export default function Home() {
       setLoadingTasks(false);
     });
   }, [consent]);
+
+  useEffect(() => {
+    if (!consent || !pos || !teamCode || !playerId) return;
+    (async () => {
+      const { data: teamData } = await supabase.from('teams').select('id').eq('code', teamCode);
+      if (!teamData || teamData.length === 0) return;
+      const teamId = teamData[0].id;
+      // Speichere eigene Position
+      await supabase.from('positions').upsert({
+        player_id: playerId,
+        team_id: teamId,
+        lat: pos.lat,
+        lng: pos.lng,
+        acc: pos.acc ?? null,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'player_id' });
+      // Hole alle Positionen des Teams
+      const { data: positionsData } = await supabase.from('positions').select('*').eq('team_id', teamId);
+      // Hole alle Teammitglieder
+      const { data: membersData } = await supabase.from('team_members').select('*').eq('team_id', teamId);
+      // Mergen: Name zu Position
+      const merged = (positionsData || []).map(pos => {
+        const member = (membersData || []).find(m => m.player_id === pos.player_id);
+        return { ...pos, name: member ? member.name : undefined };
+      });
+      setTeamPositions(merged);
+    })();
+  }, [pos, consent, teamCode, playerId]);
+
+  useEffect(() => {
+    if (!consent || !teamCode) return;
+    let interval: NodeJS.Timeout | null = null;
+    (async () => {
+      const { data: teamData } = await supabase.from('teams').select('id').eq('code', teamCode);
+      if (!teamData || teamData.length === 0) return;
+      const teamId = teamData[0].id;
+      // Initiales Laden
+      const { data: positionsData } = await supabase.from('positions').select('*').eq('team_id', teamId);
+      const { data: membersData } = await supabase.from('team_members').select('*').eq('team_id', teamId);
+      const merged = (positionsData || []).map(pos => {
+        const member = (membersData || []).find(m => m.player_id === pos.player_id);
+        return { ...pos, name: member ? member.name : undefined };
+      });
+      setTeamPositions(merged);
+      // Intervall für Live-Update
+      interval = setInterval(async () => {
+        const { data: positionsData } = await supabase.from('positions').select('*').eq('team_id', teamId);
+        const { data: membersData } = await supabase.from('team_members').select('*').eq('team_id', teamId);
+        const merged = (positionsData || []).map(pos => {
+          const member = (membersData || []).find(m => m.player_id === pos.player_id);
+          return { ...pos, name: member ? member.name : undefined };
+        });
+        setTeamPositions(merged);
+      }, 3000);
+    })();
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [consent, teamCode]);
 
   function handleModeChange(newMode: 'create' | 'join') {
     setMode(newMode);
@@ -216,6 +276,7 @@ export default function Home() {
             checkpoints={tasks}
             selectedCheckpointId={selectedCheckpointId}
             setSelectedCheckpointId={setSelectedCheckpointId}
+            teamPositions={teamPositions}
           />
           <div className="fixed bottom-0 left-0 w-full z-20 p-4 pointer-events-none">
             <StatusInfo status={status} />
