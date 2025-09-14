@@ -7,7 +7,6 @@ import { distanceMeters } from '../lib/haversine';
 import { seedCheckpoints } from '../lib/checkpoints';
 import JoinForm from '../components/JoinForm';
 import StatusInfo from '../components/StatusInfo';
-import Cookies from 'js-cookie';
 import TopNav from '../components/TopNav';
 
 type Pos = { lat: number; lng: number; acc?: number };
@@ -38,9 +37,21 @@ export default function Home() {
       localStorage.setItem('playerId', id);
     }
     setPlayerId(id);
-    const code = Cookies.get('teamCode') || '';
-    setTeamCode(code);
-    setMode(code ? 'join' : 'create');
+    // TeamCode und Teamname aus Local Storage auslesen
+    const storedCode = localStorage.getItem('teamCode') || '';
+    const storedTeam = localStorage.getItem('teamName') || '';
+    setTeamCode(storedCode);
+    setTeam(storedTeam);
+    setMode(storedCode ? 'join' : 'create');
+    // Wenn vorhanden, Teamdaten aus DB laden
+    if (storedCode && storedTeam) {
+      supabase.from('teams').select('*').eq('code', storedCode).then(({ data }) => {
+        if (data && data.length > 0) {
+          setTeam(data[0].name);
+          setTeamCode(data[0].code);
+        }
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -92,10 +103,34 @@ export default function Home() {
       alert('Bitte alle Felder ausfüllen!');
       return;
     }
-    await supabase.from('players').upsert({ id: playerId, team, name, team_code: code });
+    let teamId = '';
+    if (mode === 'create') {
+      // Team erstellen
+      const { data: teamData, error: teamError } = await supabase.from('teams').insert({ name: team, code: code }).select();
+      if (teamError || !teamData || teamData.length === 0) {
+        alert('Fehler beim Erstellen des Teams!');
+        return;
+      }
+      teamId = teamData[0].id;
+      // TeamCode und Name im Local Storage speichern
+      localStorage.setItem('teamCode', code);
+      localStorage.setItem('teamName', team);
+    } else {
+      // Team suchen
+      const { data: teamData, error: teamError } = await supabase.from('teams').select('*').eq('code', code);
+      if (teamError || !teamData || teamData.length === 0) {
+        alert('Team nicht gefunden!');
+        return;
+      }
+      teamId = teamData[0].id;
+      localStorage.setItem('teamCode', code);
+      localStorage.setItem('teamName', teamData[0].name);
+    }
+    // Team-Mitglied speichern
+    await supabase.from('team_members').insert({ team_id: teamId, player_id: playerId, name });
     setConsent(true);
     setTeamCode(code);
-    Cookies.set('teamCode', code);
+    setTeam(team);
   }
 
   function handleLogout() {
@@ -103,7 +138,8 @@ export default function Home() {
     setTeam('');
     setName('');
     setTeamCode('');
-    Cookies.remove('teamCode');
+    localStorage.removeItem('teamCode');
+    localStorage.removeItem('teamName');
     localStorage.removeItem('playerId');
   }
 
