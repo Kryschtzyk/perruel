@@ -37,20 +37,31 @@ export default function Home() {
       localStorage.setItem('playerId', id);
     }
     setPlayerId(id);
-    // TeamCode und Teamname aus Local Storage auslesen
+    // TeamCode, Teamname und Spielername aus Local Storage auslesen
     const storedCode = localStorage.getItem('teamCode') || '';
     const storedTeam = localStorage.getItem('teamName') || '';
+    const storedName = localStorage.getItem('playerName') || '';
     setTeamCode(storedCode);
     setTeam(storedTeam);
+    setName(storedName);
     setMode(storedCode ? 'join' : 'create');
-    // Wenn vorhanden, Teamdaten aus DB laden
-    if (storedCode && storedTeam) {
-      supabase.from('teams').select('*').eq('code', storedCode).then(({ data }) => {
-        if (data && data.length > 0) {
-          setTeam(data[0].name);
-          setTeamCode(data[0].code);
+    // Validierung: Existieren Team und Spieler?
+    if (storedCode && storedName) {
+      (async () => {
+        const { data: teamData } = await supabase.from('teams').select('*').eq('code', storedCode);
+        if (teamData && teamData.length > 0) {
+          const teamId = teamData[0].id;
+          const { data: memberData } = await supabase.from('team_members').select('*').eq('team_id', teamId).eq('name', storedName);
+          if (memberData && memberData.length > 0) {
+            setConsent(true); // Map direkt anzeigen
+            setTeam(teamData[0].name);
+            setTeamCode(teamData[0].code);
+            setName(storedName);
+            return;
+          }
         }
-      });
+        setConsent(false); // Formular anzeigen
+      })();
     }
   }, []);
 
@@ -112,9 +123,17 @@ export default function Home() {
         return;
       }
       teamId = teamData[0].id;
-      // TeamCode und Name im Local Storage speichern
+      // TeamCode, Name und Spielername im Local Storage speichern
       localStorage.setItem('teamCode', code);
       localStorage.setItem('teamName', team);
+      localStorage.setItem('playerName', name);
+      // Team-Mitglied speichern
+      await supabase.from('team_members').insert({ team_id: teamId, player_id: playerId, name });
+      setConsent(true);
+      setTeamCode(code);
+      setTeam(team);
+      setName(name);
+      return;
     } else {
       // Team suchen
       const { data: teamData, error: teamError } = await supabase.from('teams').select('*').eq('code', code);
@@ -123,14 +142,28 @@ export default function Home() {
         return;
       }
       teamId = teamData[0].id;
+      // Prüfen ob Name schon vergeben ist
+      const { data: memberData, error: memberError } = await supabase.from('team_members').select('*').eq('team_id', teamId).eq('name', name);
+      if (memberError) {
+        alert('Fehler bei der Spielerprüfung!');
+        return;
+      }
+      if (memberData && memberData.length > 0) {
+        alert('Der Name ist in diesem Team bereits vergeben!');
+        return;
+      }
+      // TeamCode, Name und Spielername im Local Storage speichern
       localStorage.setItem('teamCode', code);
       localStorage.setItem('teamName', teamData[0].name);
+      localStorage.setItem('playerName', name);
+      // Team-Mitglied speichern
+      await supabase.from('team_members').insert({ team_id: teamId, player_id: playerId, name });
+      setConsent(true);
+      setTeamCode(code);
+      setTeam(teamData[0].name);
+      setName(name);
+      return;
     }
-    // Team-Mitglied speichern
-    await supabase.from('team_members').insert({ team_id: teamId, player_id: playerId, name });
-    setConsent(true);
-    setTeamCode(code);
-    setTeam(team);
   }
 
   function handleLogout() {
@@ -140,6 +173,7 @@ export default function Home() {
     setTeamCode('');
     localStorage.removeItem('teamCode');
     localStorage.removeItem('teamName');
+    localStorage.removeItem('playerName');
     localStorage.removeItem('playerId');
   }
 
