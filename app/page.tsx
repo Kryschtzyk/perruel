@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { v4 as uuid } from 'uuid';
 import { distanceMeters } from '../lib/haversine';
 import { seedCheckpoints } from '../lib/checkpoints';
+import { getTeamColor } from '../lib/colors';
 import JoinForm from '../components/JoinForm';
 import StatusInfo from '../components/StatusInfo';
 import TopNav from '../components/TopNav';
@@ -350,25 +351,39 @@ export default function Home() {
 
   if (!isClient) return null;
 
-  // Hilfsfunktion für zufällige Farben
-  function getRandomColor(seed: string) {
-    // Einfache Hash-Funktion für den Seed (TeamId)
-    let hash = 0;
-    for (let i = 0; i < seed.length; i++) {
-      hash = seed.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    // Generiere Farbwert
-    const color = `hsl(${hash % 360}, 70%, 50%)`;
-    return color;
-  }
-
   // Teamfarben zuweisen (nur einmal pro Team, randomisiert nach TeamId)
   const teamColorMap: Record<string, string> = {};
   const uniqueTeamIds = Array.from(new Set(teamPositions.map(p => p.team_id)));
   uniqueTeamIds.forEach((teamId) => {
-    teamColorMap[teamId] = getRandomColor(teamId);
+    teamColorMap[teamId] = getTeamColor(teamId);
   });
-  const teamPositionsWithColor = teamPositions.map(p => ({
+
+  // Filtere eigenen Spieler HIER heraus, bevor Farben zugewiesen werden
+  const otherPlayersPositions = teamPositions.filter(p => String(p.player_id) !== String(playerId));
+
+  // Debug: Schaue was wir haben
+  console.log('Debug Spieler:', {
+    totalTeamPositions: teamPositions.length,
+    afterFiltering: otherPlayersPositions.length,
+    playerId,
+    teamPositions: teamPositions.map(p => ({
+      id: p.player_id,
+      name: p.name,
+      team_id: p.team_id
+    })),
+    otherPlayers: otherPlayersPositions.map(p => ({
+      id: p.player_id,
+      name: p.name,
+      team_id: p.team_id
+    }))
+  });
+
+  console.log('Debug Teamfarben:', {
+    uniqueTeamIds,
+    teamColorMap
+  });
+
+  const teamPositionsWithColor = otherPlayersPositions.map(p => ({
     ...p,
     color: teamColorMap[p.team_id] || "#888"
   }));

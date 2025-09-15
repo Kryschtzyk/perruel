@@ -48,15 +48,6 @@ interface TeamPosition {
   color?: string; // Teamfarbe
 }
 
-const playerColors = [
-  '#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe',
-  '#008080', '#e6beff', '#9a6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080'
-];
-function getColorForPlayer(playerId: string, idx: number) {
-  // Nutze Index oder Hash für Farbe
-  return playerColors[idx % playerColors.length];
-}
-
 function PlayerMarker({ position, color, popup }: { position: [number, number]; color: string; popup?: string }) {
   const map = useMap();
   const markerRef = useRef<L.Marker | null>(null);
@@ -65,7 +56,7 @@ function PlayerMarker({ position, color, popup }: { position: [number, number]; 
     // Erstelle einen HTML-Div als Icon
     const icon = L.divIcon({
       className: styles.playerDot,
-      html: `<div style='background:${color};width:20px;height:20px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 4px #333;'></div>`
+      html: `<div style='background:${color};width:50px;height:30px;border-radius:10%;border:2px solid #fff;box-shadow:0 0 4px #333;'></div>`
     });
     // Marker erzeugen
     const marker = L.marker(position, { icon });
@@ -114,20 +105,27 @@ export default function Map({pos, checkpoints, selectedCheckpointId, setSelected
 }) {
   const center: [number, number] = pos ? [pos.lat, pos.lng] : [49.4286974, 1.3733666];
   const selectedCheckpoint = checkpoints.find(cp => cp.id === selectedCheckpointId) || null;
-  const myPlayerId = typeof window !== 'undefined' ? window.localStorage.getItem('playerId') : '';
-  // Spread-Logik anwenden
+
+  // Spread-Logik auf die bereits gefilterten teamPositions anwenden
   const spreadPlayers = spreadPositions(teamPositions);
-  const otherPlayers = spreadPlayers.filter(tp => tp.player_id !== myPlayerId);
+
   return (
     <div className={styles.mapContainer}>
       <MapContainer {...({center, zoom: 16, style: {height: '100%', width: '100%'}} as MyMapContainerProps)}>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>
         <CenterMapOnCheckpoint selectedCheckpoint={selectedCheckpoint} zoom={16} />
+        {/* Eigener Spieler als blauer Marker */}
         {pos && (
           <PlayerMarker position={center} color="#2563eb" popup="Du bist hier" />
         )}
-        {otherPlayers.map((tp) => (
-          <PlayerMarker key={tp.player_id} position={[tp.lat, tp.lng]} color={tp.color || "#888"} popup={tp.name || tp.player_id} />
+        {/* Andere Spieler */}
+        {spreadPlayers.map((tp, index) => (
+          <PlayerMarker
+            key={tp.player_id}
+            position={[tp.lat, tp.lng]}
+            color={tp.color || "#888"}
+            popup={tp.name || tp.player_id}
+          />
         ))}
         {/* Checkpoints weiterhin mit Standard-Marker */}
         {checkpoints.map((c) => (

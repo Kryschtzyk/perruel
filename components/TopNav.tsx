@@ -3,6 +3,7 @@ import styles from './TopNav.module.scss';
 import Button from './Button';
 import Modal from './Modal';
 import { supabase } from '../lib/supabase';
+import { getTeamColor } from '../lib/colors';
 
 interface TopNavProps {
   team: string;
@@ -43,15 +44,6 @@ export default function TopNav({ team, name, teamCode, onLogout, showTasksModal,
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [errorTeams, setErrorTeams] = useState<string | null>(null);
 
-  // Farb-Hash wie auf der Map
-  function getRandomColor(seed: string) {
-    let hash = 0;
-    for (let i = 0; i < seed.length; i++) {
-      hash = seed.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return `hsl(${hash % 360}, 70%, 50%)`;
-  }
-
   useEffect(() => {
     if (!showTasksModal) return;
     setLoading(true);
@@ -80,7 +72,7 @@ export default function TopNav({ team, name, teamCode, onLogout, showTasksModal,
         id: t.id,
         name: t.name,
         code: t.code,
-        color: getRandomColor(t.id),
+        color: getTeamColor(t.id),
         members: members.filter((m: any) => m.team_id === t.id).map((m: any) => ({ name: m.name }))
       }));
       setTeamsOverview(overview);
@@ -95,7 +87,7 @@ export default function TopNav({ team, name, teamCode, onLogout, showTasksModal,
           <span className={styles.icon}>🏆</span>
         </button>
         <button className={styles.iconBtn} title="Teamübersicht" onClick={() => setShowTeamOverview(true)}>
-          <span className={styles.icon}>🧑‍🤝‍🧑</span>
+          <span className={styles.icon}>??‍??‍??</span>
         </button>
       </div>
       <div className={styles.centerInfo}>
