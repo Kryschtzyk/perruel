@@ -24,14 +24,39 @@ export default function AdminPage() {
   useEffect(() => {
     // Hole Einstellung aus DB (z.B. settings-Tabelle)
     (async () => {
-      const { data } = await supabase.from('settings').select('showAllPositions').single();
-      if (data && typeof data.showAllPositions === 'boolean') setShowAllPositions(data.showAllPositions);
+      const { data } = await supabase.from('settings').select('showallpositions').single();
+      if (data && typeof data.showallpositions === 'boolean') setShowAllPositions(data.showallpositions);
     })();
   }, []);
   async function handleTogglePositions() {
     const newValue = !showAllPositions;
     setShowAllPositions(newValue);
-    await supabase.from('settings').update({ showAllPositions: newValue }).eq('id', 1); // Annahme: settings mit id=1
+    // Prüfe, ob Eintrag existiert
+    const { data: existing, error: selectError } = await supabase.from('settings').select('id').eq('id', 1).single();
+    if (selectError) {
+      console.error('Fehler beim Auslesen des Settings-Eintrags:', selectError);
+    }
+    if (!existing) {
+      // Eintrag anlegen
+      const { error: insertError } = await supabase.from('settings').insert({ id: 1, showallpositions: newValue });
+      if (insertError) {
+        alert('Fehler beim Anlegen des Settings-Eintrags!');
+        console.error(insertError);
+      }
+    } else {
+      // Eintrag aktualisieren
+      const { error: updateError } = await supabase.from('settings').update({ showallpositions: newValue }).eq('id', 1);
+      if (updateError) {
+        alert('Fehler beim Speichern der Einstellung!');
+        console.error(updateError);
+      }
+    }
+    // Einstellung erneut auslesen
+    const { data, error: reloadError } = await supabase.from('settings').select('showallpositions').eq('id', 1).single();
+    if (reloadError) {
+      console.error('Fehler beim erneuten Auslesen:', reloadError);
+    }
+    if (data && typeof data.showallpositions === 'boolean') setShowAllPositions(data.showallpositions);
   }
 
   async function fetchTasks() {
