@@ -19,6 +19,21 @@ export default function AdminPage() {
   const [form, setForm] = useState<Partial<Task>>({});
   const [editId, setEditId] = useState<string | null>(null);
 
+  // Einstellung für Standortanzeige
+  const [showAllPositions, setShowAllPositions] = useState<boolean>(false);
+  useEffect(() => {
+    // Hole Einstellung aus DB (z.B. settings-Tabelle)
+    (async () => {
+      const { data } = await supabase.from('settings').select('showAllPositions').single();
+      if (data && typeof data.showAllPositions === 'boolean') setShowAllPositions(data.showAllPositions);
+    })();
+  }, []);
+  async function handleTogglePositions() {
+    const newValue = !showAllPositions;
+    setShowAllPositions(newValue);
+    await supabase.from('settings').update({ showAllPositions: newValue }).eq('id', 1); // Annahme: settings mit id=1
+  }
+
   async function fetchTasks() {
     setLoading(true);
     const { data, error } = await supabase.from('tasks').select('*').order('title');
@@ -55,6 +70,12 @@ export default function AdminPage() {
   return (
     <div style={{ maxWidth: 600, margin: '2rem auto', padding: '2rem', background: '#fff', borderRadius: 12, boxShadow: '0 2px 16px rgba(30,41,59,0.08)' }}>
       <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Schnitzeljagd Aufgaben verwalten</h2>
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ marginRight: 8 }}>Standortanzeige:</label>
+        <button onClick={handleTogglePositions} style={{ padding: '0.5rem 1rem', borderRadius: 4, border: '1px solid #0070f3', background: showAllPositions ? '#e1f5fe' : '#fff', color: '#0070f3' }}>
+          {showAllPositions ? 'Teamunabhängig (alle sehen sich)' : 'Teamintern (nur Teammitglieder sichtbar)'}
+        </button>
+      </div>
       {loading ? <div>Lade Aufgaben...</div> : (
         <ul style={{ marginBottom: '2rem' }}>
           {tasks.map(task => (

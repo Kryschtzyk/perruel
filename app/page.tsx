@@ -30,6 +30,15 @@ export default function Home() {
   const [errorTasks, setErrorTasks] = useState<string | null>(null);
   const [teamPositions, setTeamPositions] = useState<any[]>([]);
 
+  // Hole Einstellung für Standortanzeige
+  const [showAllPositions, setShowAllPositions] = useState<boolean>(false);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from('settings').select('showAllPositions').single();
+      if (data && typeof data.showAllPositions === 'boolean') setShowAllPositions(data.showAllPositions);
+    })();
+  }, []);
+
   useEffect(() => {
     setIsClient(true);
     let id = localStorage.getItem('playerId');
@@ -102,22 +111,35 @@ export default function Home() {
   useEffect(() => {
     if (!consent || !pos || !teamCode || !playerId) return;
     (async () => {
-      const { data: teamData } = await supabase.from('teams').select('id').eq('code', teamCode);
-      if (!teamData || teamData.length === 0) return;
-      const teamId = teamData[0].id;
-      // Speichere eigene Position
-      await supabase.from('positions').upsert({
-        player_id: playerId,
-        team_id: teamId,
-        lat: pos.lat,
-        lng: pos.lng,
-        acc: pos.acc ?? null,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'player_id' });
-      // Hole alle Positionen des Teams
-      const { data: positionsData } = await supabase.from('positions').select('*').eq('team_id', teamId);
-      // Hole alle Teammitglieder
-      const { data: membersData } = await supabase.from('team_members').select('*').eq('team_id', teamId);
+      // Hole Einstellung für Standortanzeige
+      const { data: settingsData } = await supabase.from('settings').select('showAllPositions').single();
+      const showAll = !!(settingsData && settingsData.showAllPositions);
+      let positionsData = [];
+      let membersData = [];
+      if (showAll) {
+        // Alle Positionen und Mitglieder
+        const { data: posAll } = await supabase.from('positions').select('*');
+        const { data: memAll } = await supabase.from('team_members').select('*');
+        positionsData = posAll || [];
+        membersData = memAll || [];
+      } else {
+        // Nur Team-Positionen und Mitglieder
+        const { data: teamData } = await supabase.from('teams').select('id').eq('code', teamCode);
+        if (!teamData || teamData.length === 0) return;
+        const teamId = teamData[0].id;
+        await supabase.from('positions').upsert({
+          player_id: playerId,
+          team_id: teamId,
+          lat: pos.lat,
+          lng: pos.lng,
+          acc: pos.acc ?? null,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'player_id' });
+        const { data: posTeam } = await supabase.from('positions').select('*').eq('team_id', teamId);
+        const { data: memTeam } = await supabase.from('team_members').select('*').eq('team_id', teamId);
+        positionsData = posTeam || [];
+        membersData = memTeam || [];
+      }
       // Mergen: Name zu Position
       const merged = (positionsData || []).map(pos => {
         const member = (membersData || []).find(m => m.player_id === pos.player_id);
@@ -131,12 +153,27 @@ export default function Home() {
     if (!consent || !teamCode) return;
     let interval: NodeJS.Timeout | null = null;
     (async () => {
-      const { data: teamData } = await supabase.from('teams').select('id').eq('code', teamCode);
-      if (!teamData || teamData.length === 0) return;
-      const teamId = teamData[0].id;
-      // Initiales Laden
-      const { data: positionsData } = await supabase.from('positions').select('*').eq('team_id', teamId);
-      const { data: membersData } = await supabase.from('team_members').select('*').eq('team_id', teamId);
+      // Hole Einstellung für Standortanzeige
+      const { data: settingsData } = await supabase.from('settings').select('showAllPositions').single();
+      const showAll = !!(settingsData && settingsData.showAllPositions);
+      let positionsData = [];
+      let membersData = [];
+      if (showAll) {
+        // Alle Positionen und Mitglieder
+        const { data: posAll } = await supabase.from('positions').select('*');
+        const { data: memAll } = await supabase.from('team_members').select('*');
+        positionsData = posAll || [];
+        membersData = memAll || [];
+      } else {
+        // Nur Team-Positionen und Mitglieder
+        const { data: teamData } = await supabase.from('teams').select('id').eq('code', teamCode);
+        if (!teamData || teamData.length === 0) return;
+        const teamId = teamData[0].id;
+        const { data: posTeam } = await supabase.from('positions').select('*').eq('team_id', teamId);
+        const { data: memTeam } = await supabase.from('team_members').select('*').eq('team_id', teamId);
+        positionsData = posTeam || [];
+        membersData = memTeam || [];
+      }
       const merged = (positionsData || []).map(pos => {
         const member = (membersData || []).find(m => m.player_id === pos.player_id);
         return { ...pos, name: member ? member.name : undefined };
@@ -144,8 +181,24 @@ export default function Home() {
       setTeamPositions(merged);
       // Intervall für Live-Update
       interval = setInterval(async () => {
-        const { data: positionsData } = await supabase.from('positions').select('*').eq('team_id', teamId);
-        const { data: membersData } = await supabase.from('team_members').select('*').eq('team_id', teamId);
+        const { data: settingsData } = await supabase.from('settings').select('showAllPositions').single();
+        const showAll = !!(settingsData && settingsData.showAllPositions);
+        let positionsData = [];
+        let membersData = [];
+        if (showAll) {
+          const { data: posAll } = await supabase.from('positions').select('*');
+          const { data: memAll } = await supabase.from('team_members').select('*');
+          positionsData = posAll || [];
+          membersData = memAll || [];
+        } else {
+          const { data: teamData } = await supabase.from('teams').select('id').eq('code', teamCode);
+          if (!teamData || teamData.length === 0) return;
+          const teamId = teamData[0].id;
+          const { data: posTeam } = await supabase.from('positions').select('*').eq('team_id', teamId);
+          const { data: memTeam } = await supabase.from('team_members').select('*').eq('team_id', teamId);
+          positionsData = posTeam || [];
+          membersData = memTeam || [];
+        }
         const merged = (positionsData || []).map(pos => {
           const member = (membersData || []).find(m => m.player_id === pos.player_id);
           return { ...pos, name: member ? member.name : undefined };

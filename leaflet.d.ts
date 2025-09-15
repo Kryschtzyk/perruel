@@ -8,4 +8,13 @@ declare module 'leaflet' {
   export interface CircleOptions {
     radius?: number;
   }
+  export function icon(options: any): any;
+  export function divIcon(options: any): any;
+  export function marker(latlng: LatLngExpression, options?: any): Marker;
+  export class Marker {
+    constructor(latlng: LatLngExpression, options?: any);
+    addTo(map: any): this;
+    remove(): void;
+    bindPopup(content: string): this;
+  }
 }
