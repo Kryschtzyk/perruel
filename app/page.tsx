@@ -34,8 +34,8 @@ export default function Home() {
   const [showAllPositions, setShowAllPositions] = useState<boolean>(false);
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from('settings').select('showAllPositions').single();
-      if (data && typeof data.showAllPositions === 'boolean') setShowAllPositions(data.showAllPositions);
+      const { data } = await supabase.from('settings').select('showallpositions').single();
+      if (data && typeof data.showallpositions === 'boolean') setShowAllPositions(data.showallpositions);
     })();
   }, []);
 
@@ -112,8 +112,8 @@ export default function Home() {
     if (!consent || !pos || !teamCode || !playerId) return;
     (async () => {
       // Hole Einstellung für Standortanzeige
-      const { data: settingsData } = await supabase.from('settings').select('showAllPositions').single();
-      const showAll = !!(settingsData && settingsData.showAllPositions);
+      const { data: settingsData } = await supabase.from('settings').select('showallpositions').single();
+      const showAll = !!(settingsData && settingsData.showallpositions);
       let positionsData = [];
       let membersData = [];
       if (showAll) {
@@ -154,8 +154,8 @@ export default function Home() {
     let interval: NodeJS.Timeout | null = null;
     (async () => {
       // Hole Einstellung für Standortanzeige
-      const { data: settingsData } = await supabase.from('settings').select('showAllPositions').single();
-      const showAll = !!(settingsData && settingsData.showAllPositions);
+      const { data: settingsData } = await supabase.from('settings').select('showallpositions').single();
+      const showAll = !!(settingsData && settingsData.showallpositions);
       let positionsData = [];
       let membersData = [];
       if (showAll) {
@@ -181,8 +181,8 @@ export default function Home() {
       setTeamPositions(merged);
       // Intervall für Live-Update
       interval = setInterval(async () => {
-        const { data: settingsData } = await supabase.from('settings').select('showAllPositions').single();
-        const showAll = !!(settingsData && settingsData.showAllPositions);
+        const { data: settingsData } = await supabase.from('settings').select('showallpositions').single();
+        const showAll = !!(settingsData && settingsData.showallpositions);
         let positionsData = [];
         let membersData = [];
         if (showAll) {

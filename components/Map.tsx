@@ -45,6 +45,7 @@ interface TeamPosition {
   lat: number;
   lng: number;
   name?: string;
+  color?: string; // Teamfarbe
 }
 
 const playerColors = [
@@ -97,8 +98,8 @@ export default function Map({pos, checkpoints, selectedCheckpointId, setSelected
         {pos && (
           <PlayerMarker position={center} color="#2563eb" popup="Du bist hier" />
         )}
-        {otherPlayers.map((tp, idx) => (
-          <PlayerMarker key={tp.player_id} position={[tp.lat, tp.lng]} color={getColorForPlayer(tp.player_id, idx)} popup={tp.name || tp.player_id} />
+        {otherPlayers.map((tp) => (
+          <PlayerMarker key={tp.player_id} position={[tp.lat, tp.lng]} color={tp.color || "#888"} popup={tp.name || tp.player_id} />
         ))}
         {/* Checkpoints weiterhin mit Standard-Marker */}
         {checkpoints.map((c) => (
