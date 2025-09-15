@@ -23,7 +23,7 @@ export default function Home() {
   const [mode, setMode] = useState<'create' | 'join'>('create');
   const [pos, setPos] = useState<Pos | null>(null);
   const [consent, setConsent] = useState(false);
-  const [activeCp, setActiveCp] = useState(seedCheckpoints[0]);
+  const [activeCp,setActiveCp] = useState(seedCheckpoints[0]);
   const [status, setStatus] = useState<string>('');
   const [showTasksModal, setShowTasksModal] = useState(false);
   const [selectedCheckpointId, setSelectedCheckpointId] = useState<string | number | null>(null);
@@ -46,9 +46,9 @@ export default function Home() {
     let id = localStorage.getItem('playerId');
     if (!id) {
       id = uuid();
-      localStorage.setItem('playerId', id);
+      localStorage.setItem('playerId', id ?? '');
     }
-    setPlayerId(id);
+    setPlayerId(id ?? '');
     // TeamCode, Teamname und Spielername aus Local Storage auslesen
     const storedCode = localStorage.getItem('teamCode') || '';
     const storedTeam = localStorage.getItem('teamName') || '';
