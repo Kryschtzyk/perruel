@@ -79,6 +79,32 @@ function PlayerMarker({ position, color, popup }: { position: [number, number]; 
   return null;
 }
 
+// Hilfsfunktion: Marker-Spread für gleiche Positionen
+function spreadPositions(positions: TeamPosition[], spreadRadius = 0.00008) {
+  // Gruppiere nach Position
+  const grouped: Record<string, TeamPosition[]> = {};
+  positions.forEach(p => {
+    const key = `${p.lat.toFixed(5)}_${p.lng.toFixed(5)}`;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(p);
+  });
+  // Versetze Marker
+  let result: TeamPosition[] = [];
+  Object.values(grouped).forEach(group => {
+    if (group.length === 1) {
+      result.push(group[0]);
+    } else {
+      group.forEach((p, idx) => {
+        const angle = (2 * Math.PI * idx) / group.length;
+        const latOffset = Math.sin(angle) * spreadRadius;
+        const lngOffset = Math.cos(angle) * spreadRadius;
+        result.push({ ...p, lat: p.lat + latOffset, lng: p.lng + lngOffset });
+      });
+    }
+  });
+  return result;
+}
+
 export default function Map({pos, checkpoints, selectedCheckpointId, setSelectedCheckpointId, teamPositions = []}: {
   pos: Position | null;
   checkpoints: Checkpoint[];
@@ -89,7 +115,9 @@ export default function Map({pos, checkpoints, selectedCheckpointId, setSelected
   const center: [number, number] = pos ? [pos.lat, pos.lng] : [49.4286974, 1.3733666];
   const selectedCheckpoint = checkpoints.find(cp => cp.id === selectedCheckpointId) || null;
   const myPlayerId = typeof window !== 'undefined' ? window.localStorage.getItem('playerId') : '';
-  const otherPlayers = teamPositions.filter(tp => tp.player_id !== myPlayerId);
+  // Spread-Logik anwenden
+  const spreadPlayers = spreadPositions(teamPositions);
+  const otherPlayers = spreadPlayers.filter(tp => tp.player_id !== myPlayerId);
   return (
     <div className={styles.mapContainer}>
       <MapContainer {...({center, zoom: 16, style: {height: '100%', width: '100%'}} as MyMapContainerProps)}>

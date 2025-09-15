@@ -211,6 +211,30 @@ export default function Home() {
     };
   }, [consent, teamCode]);
 
+  // Status-Flag für einmaliges Speichern der Position nach Beitritt
+  const [positionSaved, setPositionSaved] = useState(false);
+
+  useEffect(() => {
+    if (consent && pos && teamCode && playerId && !positionSaved) {
+      (async () => {
+        // Hole TeamId
+        const { data: teamData } = await supabase.from('teams').select('id').eq('code', teamCode);
+        if (teamData && teamData.length > 0) {
+          const teamId = teamData[0].id;
+          await supabase.from('positions').upsert({
+            player_id: playerId,
+            team_id: teamId,
+            lat: pos.lat,
+            lng: pos.lng,
+            acc: pos.acc ?? null,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'player_id' });
+          setPositionSaved(true);
+        }
+      })();
+    }
+  }, [consent, pos, teamCode, playerId, positionSaved]);
+
   function handleModeChange(newMode: 'create' | 'join') {
     setMode(newMode);
     if (newMode === 'create') {
@@ -242,6 +266,17 @@ export default function Home() {
       localStorage.setItem('playerName', name);
       // Team-Mitglied speichern
       await supabase.from('team_members').insert({ team_id: teamId, player_id: playerId, name });
+      // Position direkt speichern, falls vorhanden
+      if (pos) {
+        await supabase.from('positions').upsert({
+          player_id: playerId,
+          team_id: teamId,
+          lat: pos.lat,
+          lng: pos.lng,
+          acc: pos.acc ?? null,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'player_id' });
+      }
       setConsent(true);
       setTeamCode(code);
       setTeam(team);
@@ -271,6 +306,17 @@ export default function Home() {
       localStorage.setItem('playerName', name);
       // Team-Mitglied speichern
       await supabase.from('team_members').insert({ team_id: teamId, player_id: playerId, name });
+      // Position direkt speichern, falls vorhanden
+      if (pos) {
+        await supabase.from('positions').upsert({
+          player_id: playerId,
+          team_id: teamId,
+          lat: pos.lat,
+          lng: pos.lng,
+          acc: pos.acc ?? null,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'player_id' });
+      }
       setConsent(true);
       setTeamCode(code);
       setTeam(teamData[0].name);
@@ -296,6 +342,29 @@ export default function Home() {
   }
 
   if (!isClient) return null;
+
+  // Hilfsfunktion für zufällige Farben
+  function getRandomColor(seed: string) {
+    // Einfache Hash-Funktion für den Seed (TeamId)
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+      hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    // Generiere Farbwert
+    const color = `hsl(${hash % 360}, 70%, 50%)`;
+    return color;
+  }
+
+  // Teamfarben zuweisen (nur einmal pro Team, randomisiert nach TeamId)
+  const teamColorMap: Record<string, string> = {};
+  const uniqueTeamIds = Array.from(new Set(teamPositions.map(p => p.team_id)));
+  uniqueTeamIds.forEach((teamId) => {
+    teamColorMap[teamId] = getRandomColor(teamId);
+  });
+  const teamPositionsWithColor = teamPositions.map(p => ({
+    ...p,
+    color: teamColorMap[p.team_id] || "#888"
+  }));
 
   return (
     <main className="min-h-screen bg-gray-50 text-gray-900">
@@ -329,7 +398,7 @@ export default function Home() {
             checkpoints={tasks}
             selectedCheckpointId={selectedCheckpointId}
             setSelectedCheckpointId={setSelectedCheckpointId}
-            teamPositions={teamPositions}
+            teamPositions={teamPositionsWithColor}
           />
           <div className="fixed bottom-0 left-0 w-full z-20 p-4 pointer-events-none">
             <StatusInfo status={status} />
