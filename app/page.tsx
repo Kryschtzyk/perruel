@@ -8,6 +8,7 @@ import { seedCheckpoints } from '../lib/checkpoints';
 import JoinForm from '../components/JoinForm';
 import StatusInfo from '../components/StatusInfo';
 import TopNav from '../components/TopNav';
+import Modal from '../components/Modal';
 
 type Pos = { lat: number; lng: number; acc?: number };
 const Map = dynamic(() => import('../components/Map'), { ssr: false });
@@ -246,6 +247,12 @@ export default function Home() {
     }
   }
 
+  // Modal-States für Join-Flow
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [joinModalType, setJoinModalType] = useState<'existing' | 'new' | null>(null);
+  const [joinModalPlayerName, setJoinModalPlayerName] = useState<string>('');
+  const [pendingJoinData, setPendingJoinData] = useState<{ teamId: string; team: string; name: string; code: string; mode: 'create' | 'join' } | null>(null);
+
   async function handleJoin(mode: 'create' | 'join', team: string, name: string, code: string) {
     if (!name || (mode === 'create' && !team) || (mode === 'join' && !code)) {
       alert('Bitte alle Felder ausfüllen!');
@@ -260,27 +267,10 @@ export default function Home() {
         return;
       }
       teamId = teamData[0].id;
-      // TeamCode, Name und Spielername im Local Storage speichern
-      localStorage.setItem('teamCode', code);
-      localStorage.setItem('teamName', team);
-      localStorage.setItem('playerName', name);
-      // Team-Mitglied speichern
-      await supabase.from('team_members').insert({ team_id: teamId, player_id: playerId, name });
-      // Position direkt speichern, falls vorhanden
-      if (pos) {
-        await supabase.from('positions').upsert({
-          player_id: playerId,
-          team_id: teamId,
-          lat: pos.lat,
-          lng: pos.lng,
-          acc: pos.acc ?? null,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'player_id' });
-      }
-      setConsent(true);
-      setTeamCode(code);
-      setTeam(team);
-      setName(name);
+      setPendingJoinData({ teamId, team, name, code, mode });
+      setJoinModalType('new');
+      setJoinModalPlayerName(name);
+      setShowJoinModal(true);
       return;
     } else {
       // Team suchen
@@ -296,33 +286,55 @@ export default function Home() {
         alert('Fehler bei der Spielerprüfung!');
         return;
       }
+      setPendingJoinData({ teamId, team: teamData[0].name, name, code, mode });
       if (memberData && memberData.length > 0) {
-        alert('Der Name ist in diesem Team bereits vergeben!');
+        setJoinModalType('existing');
+        setJoinModalPlayerName(name);
+        setShowJoinModal(true);
+        return;
+      } else {
+        setJoinModalType('new');
+        setJoinModalPlayerName(name);
+        setShowJoinModal(true);
         return;
       }
-      // TeamCode, Name und Spielername im Local Storage speichern
+    }
+  }
+
+  async function handleJoinModalConfirm() {
+    if (!pendingJoinData) return;
+    const { teamId, team, name, code, mode } = pendingJoinData;
+    if (joinModalType === 'existing') {
+      // Als existierender Spieler spielen
       localStorage.setItem('teamCode', code);
-      localStorage.setItem('teamName', teamData[0].name);
+      localStorage.setItem('teamName', team);
       localStorage.setItem('playerName', name);
-      // Team-Mitglied speichern
-      await supabase.from('team_members').insert({ team_id: teamId, player_id: playerId, name });
-      // Position direkt speichern, falls vorhanden
-      if (pos) {
-        await supabase.from('positions').upsert({
-          player_id: playerId,
-          team_id: teamId,
-          lat: pos.lat,
-          lng: pos.lng,
-          acc: pos.acc ?? null,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'player_id' });
-      }
       setConsent(true);
       setTeamCode(code);
-      setTeam(teamData[0].name);
+      setTeam(team);
       setName(name);
+      setShowJoinModal(false);
+      setPendingJoinData(null);
+      return;
+    } else if (joinModalType === 'new') {
+      // Neuen Spieler anlegen
+      await supabase.from('team_members').insert({ team_id: teamId, player_id: playerId, name });
+      localStorage.setItem('teamCode', code);
+      localStorage.setItem('teamName', team);
+      localStorage.setItem('playerName', name);
+      setConsent(true);
+      setTeamCode(code);
+      setTeam(team);
+      setName(name);
+      setShowJoinModal(false);
+      setPendingJoinData(null);
       return;
     }
+  }
+
+  function handleJoinModalCancel() {
+    setShowJoinModal(false);
+    setPendingJoinData(null);
   }
 
   function handleLogout() {
@@ -334,11 +346,6 @@ export default function Home() {
     localStorage.removeItem('teamName');
     localStorage.removeItem('playerName');
     localStorage.removeItem('playerId');
-  }
-
-  function handleSelectCheckpoint(id: string | number) {
-    setSelectedCheckpointId(id);
-    setShowTasksModal(false);
   }
 
   if (!isClient) return null;
@@ -365,6 +372,11 @@ export default function Home() {
     ...p,
     color: teamColorMap[p.team_id] || "#888"
   }));
+
+  function handleSelectCheckpoint(id: string | number) {
+    setSelectedCheckpointId(id);
+    setShowTasksModal(false);
+  }
 
   return (
     <main className="min-h-screen bg-gray-50 text-gray-900">
@@ -404,6 +416,27 @@ export default function Home() {
             <StatusInfo status={status} />
           </div>
         </>
+      )}
+      {showJoinModal && (
+        <Modal isOpen={showJoinModal} onClose={handleJoinModalCancel} title="Teambeitritt">
+          {joinModalType === 'existing' ? (
+            <div>
+              <p>Der Name <b>{joinModalPlayerName}</b> ist bereits im Team vergeben.<br />Willst du als <b>{joinModalPlayerName}</b> spielen?</p>
+              <div style={{marginTop:16, display:'flex', gap:12}}>
+                <button className="bg-blue-600 text-white px-4 py-2 rounded" onClick={handleJoinModalConfirm}>Ja</button>
+                <button className="bg-gray-300 px-4 py-2 rounded" onClick={handleJoinModalCancel}>Abbrechen</button>
+              </div>
+            </div>
+          ) : joinModalType === 'new' ? (
+            <div>
+              <p>Es gibt noch keinen Spieler <b>{joinModalPlayerName}</b> im Team.<br />Neuen Spieler erstellen?</p>
+              <div style={{marginTop:16, display:'flex', gap:12}}>
+                <button className="bg-blue-600 text-white px-4 py-2 rounded" onClick={handleJoinModalConfirm}>Ja</button>
+                <button className="bg-gray-300 px-4 py-2 rounded" onClick={handleJoinModalCancel}>Abbrechen</button>
+              </div>
+            </div>
+          ) : null}
+        </Modal>
       )}
     </main>
   );
