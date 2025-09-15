@@ -87,7 +87,7 @@ export default function TopNav({ team, name, teamCode, onLogout, showTasksModal,
           <span className={styles.icon}>🏆</span>
         </button>
         <button className={styles.iconBtn} title="Teamübersicht" onClick={() => setShowTeamOverview(true)}>
-          <span className={styles.icon}>??‍??‍??</span>
+          <span className={styles.icon}>🧑‍🤝‍🧑</span>
         </button>
       </div>
       <div className={styles.centerInfo}>
